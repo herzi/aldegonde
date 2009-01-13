@@ -1,0 +1,12 @@
+INSTALL
+Makefile
+Makefile.in
+aclocal.m4
+*.spec
+compile
+config.*
+configure
+depcomp
+install-sh
+ltmain.sh
+missing

@@ -1,0 +1,41 @@
+Summary: @PACKAGE_NAME@
+Name: @PACKAGE_NAME@
+Version: @PACKAGE_VERSION@
+Release: 1
+Copyright: LGPL
+Group: Multimedia
+Source: %{name}-%{version}.tar.gz
+BuildRoot: %{_tmppath}/%{name}-%{version}-tmproot
+BuildRequires: gstreamer-devel >= 0.3.2
+BuildRequires: libgnomeui-devel => 2.0
+BuildRequires: libgnome-devel => 2.0
+BuildRequires: glib2-devel
+BuildRequires: gtk2-devel
+
+%description
+A GStreamer-based Media Player.
+
+%files
+%defattr(-, root, root)
+%doc AUTHORS COPYING README ChangeLog NEWS TODO
+%{_bindir}/gst-player
+#%{_pkgdatadir}/applications/gst-record.desktop
+#%{_pkgdatadir}/pixmaps/*.png
+
+%changelog
+* Sun May 30 2004 Ronald Bultje <rbultje@ronald.bitfreak.net
+- set this thing up
+
+%prep
+%setup
+%configure --prefix=%{_prefix}
+
+%build
+make
+
+%install  
+[ -n "$RPM_BUILD_ROOT" -a "$RPM_BUILD_ROOT" != / ] && rm -rf $RPM_BUILD_ROOT
+%makeinstall
+
+%clean
+[ -n "$RPM_BUILD_ROOT" -a "$RPM_BUILD_ROOT" != / ] && rm -rf $RPM_BUILD_ROOT
