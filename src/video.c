@@ -45,8 +45,8 @@ static void	gst_player_video_size_allocate	(GtkWidget      *widget,
 						 GtkAllocation  *alloc);
 static gboolean	gst_player_video_expose		(GtkWidget      *widget,
 						 GdkEventExpose *event);
-static void	gst_player_video_draw		(GstPlayerVideo *video,
-						 gboolean        on);
+static void	gst_player_video_draw		(GstPlayerVideo *video);
+static void     gst_player_video_disconnect     (GstPlayerVideo* self);
 
 static void	cb_state_change			(GstElement     *element,
 						 GstState        old_state,
@@ -185,7 +185,7 @@ gst_player_video_dispose (GObject *object)
 
   if (video->element) {
     /* shut down overlay... */
-    gst_player_video_draw (video, FALSE);
+    gst_player_video_disconnect (video);
 
     /* ...and be happy */
     gst_object_unref (GST_OBJECT (video->element));
@@ -349,8 +349,19 @@ gst_player_video_size_allocate (GtkWidget     *widget,
 }
 
 static void
-gst_player_video_draw (GstPlayerVideo *video,
-		       gboolean        on)
+gst_player_video_disconnect (GstPlayerVideo* self)
+{
+  GstXOverlay *overlay;
+
+  if (!GST_IS_X_OVERLAY (self->element))
+    return;
+  overlay = GST_X_OVERLAY (self->element);
+
+  gst_x_overlay_set_xwindow_id (overlay, 0);
+}
+
+static void
+gst_player_video_draw (GstPlayerVideo *video)
 {
   XID window;
   GstXOverlay *overlay;
@@ -360,43 +371,37 @@ gst_player_video_draw (GstPlayerVideo *video,
     return;
   overlay = GST_X_OVERLAY (video->element);
 
-  if (on) {
-    window = GDK_WINDOW_XWINDOW (video->video_window);
-  } else {
-    window = 0;
-  }
+  window = GDK_WINDOW_XWINDOW (video->video_window);
 
   gst_x_overlay_set_xwindow_id (overlay, window);
 
-  if (on) {
-    gdk_draw_rectangle (video->full_window, widget->style->black_gc,
-        TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
-    if (GST_STATE (video->element) >= GST_STATE_PAUSED) {
-      gst_x_overlay_expose (overlay);
+  gdk_draw_rectangle (video->full_window, widget->style->black_gc,
+      TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
+  if (GST_STATE (video->element) >= GST_STATE_PAUSED) {
+    gst_x_overlay_expose (overlay);
+  } else {
+    GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
+    GdkPixbuf *logo;
+    gfloat width = video->width, height = video->height;
+    gfloat ratio;
+
+    if ((gfloat) widget->allocation.width / video->width >
+        (gfloat) widget->allocation.height / video->height) {
+      ratio = (gfloat) widget->allocation.height / video->height;
     } else {
-      GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
-      GdkPixbuf *logo;
-      gfloat width = video->width, height = video->height;
-      gfloat ratio;
-
-      if ((gfloat) widget->allocation.width / video->width >
-          (gfloat) widget->allocation.height / video->height) {
-        ratio = (gfloat) widget->allocation.height / video->height;
-      } else {
-        ratio = (gfloat) widget->allocation.width / video->width;
-      }
-      width *= ratio;
-      height *= ratio;
-
-      logo = gdk_pixbuf_scale_simple (klass->logo,
-          width, height, GDK_INTERP_BILINEAR);
-
-      gdk_draw_pixbuf (GDK_DRAWABLE (video->video_window),
-          widget->style->fg_gc[0], logo, 0, 0, 0, 0,
-          width, height, GDK_RGB_DITHER_NONE, 0, 0);
-
-      gdk_pixbuf_unref (logo);
+      ratio = (gfloat) widget->allocation.width / video->width;
     }
+    width *= ratio;
+    height *= ratio;
+
+    logo = gdk_pixbuf_scale_simple (klass->logo,
+        width, height, GDK_INTERP_BILINEAR);
+
+    gdk_draw_pixbuf (GDK_DRAWABLE (video->video_window),
+        widget->style->fg_gc[0], logo, 0, 0, 0, 0,
+        width, height, GDK_RGB_DITHER_NONE, 0, 0);
+
+    gdk_pixbuf_unref (logo);
   }
 }
 
@@ -415,7 +420,7 @@ gst_player_video_expose (GtkWidget      *widget,
 
   video = GST_PLAYER_VIDEO (widget);
  
-  gst_player_video_draw (video, TRUE);
+  gst_player_video_draw (video);
 
   return TRUE;
 }

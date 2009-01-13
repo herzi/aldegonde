@@ -1,3 +1,4 @@
 * timer widget should always cover whole toolbar
 * stability, error reporting
 * visualization (at some point)
+* G_DEFINE_TYPE()
