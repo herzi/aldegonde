@@ -795,43 +795,6 @@ cb_state (GstElement*play,
   }
 }
 
-typedef struct _GstPlayerWindowTagFound {
-  GstElement *play;
-  GstTagList *taglist;
-  GstPlayerWindow *win;
-} GstPlayerWindowTagFound;
-
-static gboolean
-idle_found_tag (gpointer data)
-{
-  GstPlayerWindowTagFound *tf = data;
-
-  /* cache tags, update window (if any) */
-  if (tf->win->tagcache && tf->taglist) {
-    GstTagList *taglist;
-
-    taglist = gst_tag_list_merge (tf->win->tagcache, tf->taglist,
-				  GST_TAG_MERGE_APPEND);
-    gst_tag_list_free (tf->win->tagcache);
-    tf->win->tagcache = taglist;
-  } else if (tf->taglist) {
-    tf->win->tagcache = gst_tag_list_copy (tf->taglist);
-  }
-
-  if (tf->win->props) {
-    gst_player_properties_update (GST_PLAYER_PROPERTIES (tf->win->props),
-				  tf->win->play, tf->win->tagcache);
-  }
-
-  gst_object_unref (GST_OBJECT (tf->play));
-  gst_tag_list_free (tf->taglist);
-  g_object_unref (G_OBJECT (tf->win));
-  g_free (tf);
-
-  /* once */
-  return FALSE;
-}
-
 static void
 cb_found_tag (GstElement       *play,
 	      GstElement       *source,
@@ -839,15 +802,22 @@ cb_found_tag (GstElement       *play,
 	      gpointer          data)
 {
   GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
-  GstPlayerWindowTagFound *tf = g_new (GstPlayerWindowTagFound, 1);
 
-  tf->play = play;
-  gst_object_ref (GST_OBJECT (play));
-  tf->taglist = gst_tag_list_copy (taglist);
-  tf->win = win;
-  g_object_ref (G_OBJECT (win));
+  if (win->tagcache && taglist) {
+    GstTagList *taglist2;
 
-  g_idle_add ((GSourceFunc) idle_found_tag, tf);
+    taglist2 = gst_tag_list_merge (win->tagcache, taglist,
+				  GST_TAG_MERGE_APPEND);
+    gst_tag_list_free (win->tagcache);
+    win->tagcache = taglist2;
+  } else if (taglist) {
+    win->tagcache = gst_tag_list_copy (taglist);
+  }
+
+  if (win->props) {
+    gst_player_properties_update (GST_PLAYER_PROPERTIES (win->props),
+				  win->play, win->tagcache);
+  }
 }
 
 static void
