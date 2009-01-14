@@ -244,15 +244,31 @@ gst_player_window_init (GstPlayerWindow *win)
   gnome_app_install_appbar_menu_hints (GNOME_APPBAR (bar), menu);
 }
 
+static void
+cb_message (GstBus    *bus,
+            GstMessage*message,
+            gpointer   user_data)
+{
+  switch (message->type) {
+    case GST_MESSAGE_EOS:
+      cb_eos (GST_PLAYER_WINDOW (user_data)->play,
+              user_data);
+      break;
+    default:
+      break;
+  }
+}
+
 GtkWidget *
 gst_player_window_new (GError **err)
 {
   GstPlayerWindow *win;
+  BonoboDockItem  *item;
   GstElement *play;
   GstElement *audio, *video;
   GnomeApp *app;
-  GtkWidget *videow, *toolbar, *slider;
-  BonoboDockItem *item;
+  GtkWidget       *videow, *toolbar, *slider;
+  GstBus          *bus;
 
   /* start with the player */
   if (!(play = gst_element_factory_make ("playbin", "player"))) {
@@ -287,7 +303,9 @@ gst_player_window_new (GError **err)
   win = g_object_new (GST_PLAYER_TYPE_WINDOW, NULL);
   app = GNOME_APP (win);
   win->play = play;
-  g_signal_connect (play, "eos", G_CALLBACK (cb_eos), win);
+  bus = gst_pipeline_get_bus (GST_PIPELINE (play));
+  gst_bus_add_signal_watch (bus);
+  g_signal_connect (bus, "message", G_CALLBACK (cb_message), win);
   g_signal_connect (play, "error", G_CALLBACK (cb_error), win);
   g_signal_connect (play, "state-change", G_CALLBACK (cb_state), win);
   g_signal_connect (play, "found-tag", G_CALLBACK (cb_found_tag), win);
