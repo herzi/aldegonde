@@ -125,6 +125,14 @@ gst_player_video_init (GstPlayerVideo *video)
   GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
   GdkPixbuf* logo = klass->logo;
 
+  if (!logo)
+    {
+      logo = gtk_widget_render_icon (GTK_WIDGET (video),
+                                     GTK_STOCK_MISSING_IMAGE,
+                                     GTK_ICON_SIZE_DIALOG,
+                                     NULL);
+    }
+
   video->element = NULL;
   video->id = 0;
   video->width = gdk_pixbuf_get_width (logo);
@@ -132,6 +140,11 @@ gst_player_video_init (GstPlayerVideo *video)
 
   video->id2 = g_signal_connect (video, "size-request",
       G_CALLBACK (cb_preferred_video_size), NULL);
+
+  if (logo != klass->logo)
+    {
+      g_object_unref (logo);
+    }
 }
 
 static void
@@ -408,6 +421,7 @@ gst_player_video_expose (GtkWidget      *widget,
     gst_x_overlay_expose (GST_X_OVERLAY (video->element));
   } else {
     GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
+    GdkPixbuf *main_logo;
     GdkPixbuf *logo;
     gfloat width = video->width, height = video->height;
     gfloat ratio;
@@ -424,8 +438,16 @@ gst_player_video_expose (GtkWidget      *widget,
     gdk_draw_rectangle (video->video_window, widget->style->black_gc,
         TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
 
+    main_logo = klass->logo ? g_object_ref (klass->logo) : NULL;
+
+    if (!main_logo)
+      main_logo = gtk_widget_render_icon (widget,
+                                          GTK_STOCK_MISSING_IMAGE,
+                                          GTK_ICON_SIZE_DIALOG,
+                                          NULL);
+
     /* FIXME: it's totally uncool to do this on every expose... */
-    logo = gdk_pixbuf_scale_simple (klass->logo,
+    logo = gdk_pixbuf_scale_simple (main_logo,
         width, height, GDK_INTERP_BILINEAR);
 
     gdk_draw_pixbuf (GDK_DRAWABLE (video->video_window),
@@ -433,6 +455,7 @@ gst_player_video_expose (GtkWidget      *widget,
         width, height, GDK_RGB_DITHER_NONE, 0, 0);
 
     gdk_pixbuf_unref (logo);
+    g_object_unref (main_logo);
   }
 
   gdk_window_invalidate_rect (video->full_window,
@@ -516,12 +539,23 @@ cb_state_change (GstElement*element,
   if ((old_state >= GST_STATE_PAUSED &&
        new_state <= GST_STATE_READY)) {
     GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
+    GdkPixbuf* logo;
 
-    video->width = gdk_pixbuf_get_width (klass->logo);
-    video->height = gdk_pixbuf_get_height (klass->logo);
+    if (klass->logo)
+      logo = g_object_ref (klass->logo);
+    else
+      logo = gtk_widget_render_icon (GTK_WIDGET (video),
+                                     GTK_STOCK_MISSING_IMAGE,
+                                     GTK_ICON_SIZE_DIALOG,
+                                     NULL);
+
+    video->width = gdk_pixbuf_get_width (logo);
+    video->height = gdk_pixbuf_get_height (logo);
 
     g_object_ref (G_OBJECT (video));
     g_idle_add (idle_desired_size, video);
+
+    g_object_unref (logo);
   } else if ((new_state >= GST_STATE_PAUSED &&
 	      old_state <= GST_STATE_READY)) {
     const GList *sinfo = NULL;
