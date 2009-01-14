@@ -709,41 +709,38 @@ cb_error (GstElement *play,
   gst_element_set_state (play, GST_STATE_READY);
 }
 
-typedef struct _GstPlayerWindowStateChange {
-  GstElement *play;
-  GstState old_state, new_state;
-  GstPlayerWindow *win;
-} GstPlayerWindowStateChange;
-
-static gboolean
-idle_state (gpointer data)
+static void
+cb_state (GstElement*play,
+	  GstState   old_state,
+	  GstState   new_state,
+	  gpointer   data)
 {
-  GstPlayerWindowStateChange *st = data;
+  GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
 
-  if (st->old_state == GST_STATE_PLAYING) {
+  if (old_state == GST_STATE_PLAYING) {
     /* show play button */
     gtk_widget_show (tool[0].widget);
     gtk_widget_hide (tool[1].widget);
-    if (st->win->idle_id != 0) {
-      g_source_remove (st->win->idle_id);
-      st->win->idle_id = 0;
+    if (win->idle_id != 0) {
+      g_source_remove (win->idle_id);
+      win->idle_id = 0;
     }
-  } else if (st->new_state == GST_STATE_PLAYING) {
+  } else if (new_state == GST_STATE_PLAYING) {
     /* show pause button */
     gtk_widget_show (tool[1].widget);
     gtk_widget_hide (tool[0].widget);
-    if (st->win->idle_id != 0)
-      g_source_remove (st->win->idle_id);
-    st->win->idle_id = g_idle_add (cb_iterate, st->win);
+    if (win->idle_id != 0)
+      g_source_remove (win->idle_id);
+    win->idle_id = g_idle_add (cb_iterate, win);
   }
 
   /* new movie loaded? */
-  if (st->old_state == GST_STATE_READY &&
-      st->new_state > GST_STATE_READY) {
+  if (old_state == GST_STATE_READY &&
+      new_state > GST_STATE_READY) {
     GList *streaminfo = NULL;
     gboolean have_video = FALSE, have_audio = FALSE;
 
-    g_object_get (G_OBJECT (st->win->play), "stream-info",
+    g_object_get (G_OBJECT (win->play), "stream-info",
 		  &streaminfo, NULL);
     for ( ; streaminfo != NULL; streaminfo = streaminfo->next) {
       GObject *info = streaminfo->data;
@@ -770,58 +767,32 @@ idle_state (gpointer data)
 
     /* show/hide video window */
     if (have_video)
-      gtk_widget_show (st->win->video);
+      gtk_widget_show (win->video);
     else
-      gtk_widget_hide (st->win->video);
+      gtk_widget_hide (win->video);
 
     /* well, this resizes the window, which is what I want. */
-    gtk_window_resize (GTK_WINDOW (st->win), 1, 1);
+    gtk_window_resize (GTK_WINDOW (win), 1, 1);
 
-    if (st->win->props) {
-      gst_player_properties_update (GST_PLAYER_PROPERTIES (st->win->props),
-				    st->win->play, NULL);
+    if (win->props) {
+      gst_player_properties_update (GST_PLAYER_PROPERTIES (win->props),
+				    win->play, NULL);
     }
   }
 
   /* discarded movie? */
-  if (st->old_state > GST_STATE_READY &&
-      st->new_state == GST_STATE_READY) {
-    if (st->win->tagcache) {
-      gst_tag_list_free (st->win->tagcache);
-      st->win->tagcache = NULL;
+  if (old_state > GST_STATE_READY &&
+      new_state == GST_STATE_READY) {
+    if (win->tagcache) {
+      gst_tag_list_free (win->tagcache);
+      win->tagcache = NULL;
     }
 
-    if (st->win->props) {
-      gst_player_properties_update (GST_PLAYER_PROPERTIES (st->win->props),
-				    st->win->play, NULL);
+    if (win->props) {
+      gst_player_properties_update (GST_PLAYER_PROPERTIES (win->props),
+				    win->play, NULL);
     }
   }
-
-  gst_object_unref (GST_OBJECT (st->play));
-  g_object_unref (G_OBJECT (st->win));
-  g_free (st);
-
-  /* once */
-  return FALSE;
-}
-
-static void
-cb_state (GstElement*play,
-	  GstState   old_state,
-	  GstState   new_state,
-	  gpointer   data)
-{
-  GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
-  GstPlayerWindowStateChange *st = g_new (GstPlayerWindowStateChange, 1);
-
-  st->play = play;
-  gst_object_ref (GST_OBJECT (play));
-  st->old_state = old_state;
-  st->new_state = new_state;
-  st->win = win;
-  g_object_ref (G_OBJECT (win));
-
-  g_idle_add ((GSourceFunc) idle_state, st);
 }
 
 typedef struct _GstPlayerWindowTagFound {
