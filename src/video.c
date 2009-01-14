@@ -36,6 +36,7 @@ static void	gst_player_video_class_init	(GstPlayerVideoClass *klass);
 static void	gst_player_video_init		(GstPlayerVideo *video);
 static void	gst_player_video_dispose	(GObject        *object);
 static void	gst_player_video_realize	(GtkWidget      *widget);
+static void     gst_player_video_unrealize      (GtkWidget      *widget);
 static void	gst_player_video_size_request	(GtkWidget      *widget,
 						 GtkRequisition *req);
 static void	cb_preferred_video_size		(GtkWidget      *widget,
@@ -46,7 +47,6 @@ static void	gst_player_video_size_allocate	(GtkWidget      *widget,
 static gboolean	gst_player_video_expose		(GtkWidget      *widget,
 						 GdkEventExpose *event);
 static void	gst_player_video_draw		(GstPlayerVideo *video);
-static void     gst_player_video_disconnect     (GstPlayerVideo* self);
 
 static void	cb_state_change			(GstElement     *element,
 						 GstState        old_state,
@@ -94,10 +94,11 @@ gst_player_video_class_init (GstPlayerVideoClass *klass)
 
   gobject_class->dispose = gst_player_video_dispose;
 
-  widget_class->realize = gst_player_video_realize;
+  widget_class->realize       = gst_player_video_realize;
+  widget_class->unrealize     = gst_player_video_unrealize;
   widget_class->size_allocate = gst_player_video_size_allocate;
-  widget_class->size_request = gst_player_video_size_request;
-  widget_class->expose_event = gst_player_video_expose;
+  widget_class->size_request  = gst_player_video_size_request;
+  widget_class->expose_event  = gst_player_video_expose;
 
   /* icon */
   filename = gnome_program_locate_file (NULL,
@@ -184,10 +185,7 @@ gst_player_video_dispose (GObject *object)
   }
 
   if (video->element) {
-    /* shut down overlay... */
-    gst_player_video_disconnect (video);
-
-    /* ...and be happy */
+    /* be happy */
     gst_object_unref (GST_OBJECT (video->element));
     video->element = NULL;
   }
@@ -271,6 +269,16 @@ gst_player_video_realize (GtkWidget *widget)
   gdk_window_set_user_data (widget->window, widget);
 
   gtk_style_set_background (widget->style, widget->window, GTK_STATE_ACTIVE);
+
+  gst_x_overlay_set_xwindow_id (GST_X_OVERLAY (video->element), GDK_WINDOW_XWINDOW (video->video_window));
+}
+
+static void
+gst_player_video_unrealize (GtkWidget* widget)
+{
+  gst_x_overlay_set_xwindow_id (GST_X_OVERLAY (GST_PLAYER_VIDEO (widget)->element), 0);
+
+  GTK_WIDGET_CLASS (parent_class)->unrealize (widget);
 }
 
 /*
@@ -349,31 +357,14 @@ gst_player_video_size_allocate (GtkWidget     *widget,
 }
 
 static void
-gst_player_video_disconnect (GstPlayerVideo* self)
-{
-  GstXOverlay *overlay;
-
-  if (!GST_IS_X_OVERLAY (self->element))
-    return;
-  overlay = GST_X_OVERLAY (self->element);
-
-  gst_x_overlay_set_xwindow_id (overlay, 0);
-}
-
-static void
 gst_player_video_draw (GstPlayerVideo *video)
 {
-  XID window;
   GstXOverlay *overlay;
   GtkWidget *widget = GTK_WIDGET (video);
 
   if (!GST_IS_X_OVERLAY (video->element))
     return;
   overlay = GST_X_OVERLAY (video->element);
-
-  window = GDK_WINDOW_XWINDOW (video->video_window);
-
-  gst_x_overlay_set_xwindow_id (overlay, window);
 
   gdk_draw_rectangle (video->full_window, widget->style->black_gc,
       TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
