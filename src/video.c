@@ -123,11 +123,12 @@ static void
 gst_player_video_init (GstPlayerVideo *video)
 {
   GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
+  GdkPixbuf* logo = klass->logo;
 
   video->element = NULL;
   video->id = 0;
-  video->width = gdk_pixbuf_get_width (klass->logo);
-  video->height = gdk_pixbuf_get_height (klass->logo);
+  video->width = gdk_pixbuf_get_width (logo);
+  video->height = gdk_pixbuf_get_height (logo);
 
   video->id2 = g_signal_connect (video, "size-request",
       G_CALLBACK (cb_preferred_video_size), NULL);
