@@ -273,6 +273,21 @@ cb_message (GstBus    *bus,
         g_free (debug);
       }
       break;
+    case GST_MESSAGE_TAG:
+      {
+        GstTagList* tags = NULL;
+
+        gst_message_parse_tag (message,
+                               &tags);
+
+        cb_found_tag (GST_PLAYER_WINDOW (user_data)->play,
+                      GST_ELEMENT (message->src),
+                      tags,
+                      user_data);
+
+        gst_tag_list_free (tags);
+      }
+      break;
     default:
       break;
   }
@@ -326,7 +341,6 @@ gst_player_window_new (GError **err)
   gst_bus_add_signal_watch (bus);
   g_signal_connect (bus, "message", G_CALLBACK (cb_message), win);
   g_signal_connect (play, "state-change", G_CALLBACK (cb_state), win);
-  g_signal_connect (play, "found-tag", G_CALLBACK (cb_found_tag), win);
 
   /* add slider */
   slider = gst_player_timer_new (play);
