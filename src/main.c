@@ -77,17 +77,15 @@ main (gint   argc,
   GError *err = NULL;
   gchar *appfile;
   GtkWidget *win;
-  struct poptOption options[] = {
-    { NULL, '\0', POPT_ARG_INCLUDE_TABLE, NULL, 0, "GStreamer", NULL },
-    POPT_TABLEEND
-  };
+  GOptionContext* options;
 
+  options = g_option_context_new ("");
   /* init gstreamer */
-  options[0].arg = (void *) gst_init_get_popt_table ();
+  g_option_context_add_group(options, gst_init_get_option_group ());
 
   /* init gtk/gnome */
   gnome_program_init (PACKAGE, VERSION, LIBGNOMEUI_MODULE, argc, argv,
-		      GNOME_PARAM_POPT_TABLE, options,
+		      GNOME_PARAM_GOPTION_CONTEXT, options,
 		      GNOME_PARAM_APP_DATADIR, DATA_DIR, NULL);
 
   /* init ourselves */

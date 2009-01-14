@@ -27,7 +27,6 @@
 #include <gtk/gtkmain.h>
 #include <gtk/gtksignal.h>
 #include <gdk/gdkx.h>
-#include <gst/gconf/gconf.h>
 #include <gnome.h>
 #include <libgnome/libgnome.h>
 #include <libgnomeui/libgnomeui.h>
@@ -72,8 +71,8 @@ static void	cb_error			(GstElement      *play,
 						 gchar           *debug,
 						 gpointer         data);
 static void	cb_state			(GstElement      *play,
-						 GstElementState  old_state,
-						 GstElementState  new_state,
+						 GstState         old_state,
+						 GstState         new_state,
 						 gpointer         data);
 static void	cb_found_tag			(GstElement      *play,
 						 GstElement      *source,
@@ -263,14 +262,14 @@ gst_player_window_new (GError **err)
   }
 
   /* set video/audio output */
-  if (!(audio = gst_gconf_get_default_audio_sink ())) {
+  if (!(audio = gst_element_factory_make ("gconfaudiosink", "audio-sink"))) {
     g_set_error (err, GST_PLAYER_ERROR, 1,
 		 _("Failed to obtain default audio sink from GConf"));
     goto fail;
   }
   g_object_set (play, "audio-sink", audio, NULL);
 
-  if (!(video = gst_gconf_get_default_video_sink ())) {
+  if (!(video = gst_element_factory_make ("gconfvideosink", "video-sink"))) {
     g_set_error (err, GST_PLAYER_ERROR, 1,
 		 _("Failed to obtain default video sink from GConf"));
     goto fail;
@@ -278,7 +277,7 @@ gst_player_window_new (GError **err)
   g_object_set (play, "video-sink", video, NULL);
 
   if (gst_element_set_state (GST_ELEMENT (play),
-			     GST_STATE_READY) != GST_STATE_SUCCESS) {
+			     GST_STATE_READY) != GST_STATE_CHANGE_SUCCESS) {
     g_set_error (err, GST_PLAYER_ERROR, 1,
 		 _("Failed to set player to initial ready state - fatal"));
     goto fail;
@@ -358,13 +357,9 @@ cb_iterate (gpointer data)
 {
   GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
   gboolean res;
-
-  if (!GST_FLAG_IS_SET (win->play, GST_BIN_SELF_SCHEDULABLE)) {
-    res = gst_bin_iterate (GST_BIN (win->play));
-  } else {
-    g_usleep (100);
-    res = (gst_element_get_state (win->play) == GST_STATE_PLAYING);
-  }
+  GstState state;
+  gst_element_get_state (win->play, &state, NULL, 100 /* usec */ * GST_NSECOND / GST_USECOND);
+  res = state == GST_STATE_PLAYING;
 
   /* update timer - EOS might have killed us already so stop then*/
   if (res && win->idle_id != 0)
@@ -534,7 +529,7 @@ cb_play_or_pause (GtkWidget *widget,
 		  gpointer   data)
 {
   GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
-  GstElementState state;
+  GstState state;
 
   if (GST_STATE (win->play) == GST_STATE_PLAYING)
     state = GST_STATE_PAUSED;
@@ -677,7 +672,7 @@ cb_error (GstElement *play,
 
 typedef struct _GstPlayerWindowStateChange {
   GstElement *play;
-  GstElementState old_state, new_state;
+  GstState old_state, new_state;
   GstPlayerWindow *win;
 } GstPlayerWindowStateChange;
 
@@ -766,10 +761,10 @@ idle_state (gpointer data)
 }
 
 static void
-cb_state (GstElement     *play,
-	  GstElementState old_state,
-	  GstElementState new_state,
-	  gpointer        data)
+cb_state (GstElement*play,
+	  GstState   old_state,
+	  GstState   new_state,
+	  gpointer   data)
 {
   GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
   GstPlayerWindowStateChange *st = g_new (GstPlayerWindowStateChange, 1);

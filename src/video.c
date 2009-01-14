@@ -28,7 +28,7 @@
 #include <gtk/gtksignal.h>
 #include <gdk/gdkx.h>
 #include <gnome.h>
-#include <gst/xoverlay/xoverlay.h>
+#include <gst/interfaces/xoverlay.h>
 
 #include "video.h"
 
@@ -49,8 +49,8 @@ static void	gst_player_video_draw		(GstPlayerVideo *video,
 						 gboolean        on);
 
 static void	cb_state_change			(GstElement     *element,
-						 GstElementState old_state,
-						 GstElementState new_state,
+						 GstState        old_state,
+						 GstState        new_state,
 						 gpointer        data);
 
 static GtkWidgetClass *parent_class = NULL;
@@ -454,10 +454,10 @@ cb_caps_set (GObject    *obj,
 }
 
 static void
-cb_state_change (GstElement     *element,
-		 GstElementState old_state,
-		 GstElementState new_state,
-		 gpointer        data)
+cb_state_change (GstElement*element,
+		 GstState   old_state,
+		 GstState   new_state,
+		 gpointer   data)
 {
   GstPlayerVideo *video = GST_PLAYER_VIDEO (data);
 

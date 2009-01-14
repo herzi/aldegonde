@@ -41,8 +41,8 @@ static gboolean	cb_button_release		(GtkWidget      *widget,
 						 gpointer        data);
 
 static void	cb_state			(GstElement     *play,
-						 GstElementState old_state,
-						 GstElementState new_state,
+						 GstState        old_state,
+						 GstState        new_state,
 						 gpointer        data);
 
 static void	cb_seek				(GtkRange       *range,
@@ -193,22 +193,29 @@ gst_player_timer_progress (GstPlayerTimer *timer)
 {
   GstFormat fmt = GST_FORMAT_TIME;
   GtkAdjustment *adj;
+  GstQuery* query;
   gint64 value;
   gchar *label;
   gboolean new_len = FALSE, new_pos = FALSE;
 
   /* get length/position */
   if (!GST_CLOCK_TIME_IS_VALID (timer->len)) {
-    if (gst_element_query (timer->play, GST_QUERY_TOTAL, &fmt, &value)) {
+    query = gst_query_new_duration (fmt);
+    if (gst_element_query (timer->play, query)) {
+      gst_query_parse_duration (query, &fmt, &value);
       timer->len = value;
       new_len = TRUE;
     }
+    gst_query_unref (query);
   }
-  if (gst_element_query (timer->play, GST_QUERY_POSITION, &fmt, &value)) {
+  query = gst_query_new_position (fmt);
+  if (gst_element_query (timer->play, query)) {
+    gst_query_parse_position (query, &fmt, &value);
     if ((timer->pos / GST_SECOND) != (value / GST_SECOND))
       new_pos = TRUE;
     timer->pos = value;
   }
+  gst_query_unref (query);
 
   if (GST_CLOCK_TIME_IS_VALID (timer->pos)) {
     gboolean new_label = FALSE;
@@ -283,7 +290,7 @@ cb_button_release (GtkWidget      *widget,
 
 typedef struct _GstPlayerTimerStateChange {
   GstElement *play;
-  GstElementState old_state, new_state;
+  GstState old_state, new_state;
   GstPlayerTimer *timer;
 } GstPlayerTimerStateChange;
 
@@ -315,10 +322,10 @@ idle_state (gpointer data)
 }
 
 static void
-cb_state (GstElement     *play,
-	  GstElementState old_state,
-	  GstElementState new_state,
-	  gpointer        data)
+cb_state (GstElement*play,
+	  GstState   old_state,
+	  GstState   new_state,
+	  gpointer   data)
 {
   GstPlayerTimer *timer = GST_PLAYER_TIMER (data);
   GstPlayerTimerStateChange *st = g_new (GstPlayerTimerStateChange, 1);
@@ -345,12 +352,8 @@ cb_seek (GtkRange *range,
 
   if (!timer->lock) {
     guint64 seek_val = gtk_range_get_value (range);
-    GstEvent *event;
-
-    event = gst_event_new_seek (GST_SEEK_METHOD_SET | GST_SEEK_FLAG_FLUSH |
-        GST_FORMAT_TIME, seek_val);
 
     /* try on video first */
-    gst_element_send_event (timer->play, event);
+    gst_element_seek_simple (timer->play, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, seek_val);
   }
 }
