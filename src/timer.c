@@ -131,6 +131,32 @@ gst_player_timer_init (GstPlayerTimer *timer)
    */
 }
 
+static void
+cb_message (GstBus    *bus,
+            GstMessage*message,
+            gpointer   user_data)
+{
+  switch (message->type) {
+    case GST_MESSAGE_STATE_CHANGED:
+      {
+        GstState old_state, new_state;
+
+        gst_message_parse_state_changed (message,
+                                         &old_state,
+                                         &new_state,
+                                         NULL);
+
+        cb_state (GST_PLAYER_TIMER (user_data)->play,
+                  old_state,
+                  new_state,
+                  user_data);
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 GtkWidget *
 gst_player_timer_new (GstElement *play)
 {
@@ -141,7 +167,7 @@ gst_player_timer_new (GstElement *play)
     gst_object_ref (GST_OBJECT (play));
     timer->play = play;
 
-    g_signal_connect (play, "state-change", G_CALLBACK (cb_state), timer);
+    g_signal_connect (gst_pipeline_get_bus (GST_PIPELINE (play)), "message", G_CALLBACK (cb_message), timer);
   }
   cb_state (NULL, GST_STATE_PLAYING, GST_STATE_NULL, timer);
 
