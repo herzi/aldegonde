@@ -273,6 +273,21 @@ cb_message (GstBus    *bus,
         g_free (debug);
       }
       break;
+    case GST_MESSAGE_STATE_CHANGED:
+      {
+        GstState old_state, new_state;
+
+        gst_message_parse_state_changed (message,
+                                         &old_state,
+                                         &new_state,
+                                         NULL);
+
+        cb_state (GST_PLAYER_WINDOW (user_data)->play,
+                  old_state,
+                  new_state,
+                  user_data);
+      }
+      break;
     case GST_MESSAGE_TAG:
       {
         GstTagList* tags = NULL;
@@ -340,7 +355,6 @@ gst_player_window_new (GError **err)
   bus = gst_pipeline_get_bus (GST_PIPELINE (play));
   gst_bus_add_signal_watch (bus);
   g_signal_connect (bus, "message", G_CALLBACK (cb_message), win);
-  g_signal_connect (play, "state-change", G_CALLBACK (cb_state), win);
 
   /* add slider */
   slider = gst_player_timer_new (play);
@@ -761,16 +775,22 @@ idle_state (gpointer data)
       gint type;
       GParamSpec *pspec;
       GEnumValue *val;
-                                                                                
+
+      gchar* name;
+
       g_object_get (info, "type", &type, NULL);
       pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (info), "type");
       val = g_enum_get_value (G_PARAM_SPEC_ENUM (pspec)->enum_class, type);
 
-      if (strstr (val->value_name, "AUDIO")) {
+      name = g_utf8_strdown (val->value_name, -1);
+
+      if (strstr (name, "audio")) {
         have_audio = TRUE;
-      } else if (strstr (val->value_name, "VIDEO")) {
+      } else if (strstr (name, "video")) {
         have_video = TRUE;
       }
+
+      g_free (name);
     }
 
     /* show/hide video window */
