@@ -269,7 +269,7 @@ gst_player_window_new (GError **err)
   }
   g_object_set (play, "audio-sink", audio, NULL);
 
-  if (!(video = gst_element_factory_make ("gconfvideosink", "video-sink"))) {
+  if (!(video = gst_element_factory_make ("ximagesink", "video-sink"))) {
     g_set_error (err, GST_PLAYER_ERROR, 1,
 		 _("Failed to obtain default video sink from GConf"));
     goto fail;
