@@ -688,40 +688,6 @@ cb_about (GtkWidget *widget,
   gtk_widget_show (about);
 }
 
-typedef struct _GstPlayerWindowError {
-  GstElement *play;
-  GstElement *source;
-  GError *error;
-  gchar *debug;
-  GstPlayerWindow *win;
-} GstPlayerWindowError;
-
-static gboolean
-idle_error (gpointer data)
-{
-  GstPlayerWindowError *err = data;
-  GtkWidget *dialog;
-
-  gst_element_set_state (err->play, GST_STATE_READY);
-  dialog = gtk_message_dialog_new (GTK_WINDOW (err->win),
-                                   GTK_DIALOG_DESTROY_WITH_PARENT,
-                                   GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
-                                   err->error->message);
-  gtk_widget_show (dialog);
-  gtk_dialog_run (GTK_DIALOG (dialog));
-  gtk_widget_destroy (dialog);
-
-  g_free (err->debug);
-  g_error_free (err->error);
-  gst_object_unref (GST_OBJECT (err->play));
-  gst_object_unref (GST_OBJECT (err->source));
-  g_object_unref (G_OBJECT (err->win));
-  g_free (err);
-
-  /* once */
-  return FALSE;
-}
-
 static void
 cb_error (GstElement *play,
 	  GstElement *source,
@@ -730,18 +696,17 @@ cb_error (GstElement *play,
 	  gpointer    data)
 {
   GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
-  GstPlayerWindowError *err = g_new (GstPlayerWindowError, 1);
+  GtkWidget *dialog;
 
-  err->play = play;
-  gst_object_ref (GST_OBJECT (play));
-  err->source = source;
-  gst_object_ref (GST_OBJECT (source));
-  err->error = g_error_copy (error);
-  err->debug = g_strdup (debug);
-  err->win = win;
-  g_object_ref (G_OBJECT (win));
+  dialog = gtk_message_dialog_new (GTK_WINDOW (win),
+                                   GTK_DIALOG_DESTROY_WITH_PARENT,
+                                   GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
+                                   error->message);
+  gtk_widget_show (dialog);
+  gtk_dialog_run (GTK_DIALOG (dialog));
+  gtk_widget_destroy (dialog);
 
-  g_idle_add ((GSourceFunc) idle_error, err);
+  gst_element_set_state (play, GST_STATE_READY);
 }
 
 typedef struct _GstPlayerWindowStateChange {
