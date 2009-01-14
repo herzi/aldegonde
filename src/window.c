@@ -342,7 +342,7 @@ gst_player_window_new (GError **err)
   g_object_set (play, "video-sink", video, NULL);
 
   if (gst_element_set_state (GST_ELEMENT (play),
-			     GST_STATE_READY) != GST_STATE_CHANGE_SUCCESS) {
+			     GST_STATE_READY) == GST_STATE_CHANGE_FAILURE) {
     g_set_error (err, GST_PLAYER_ERROR, 1,
 		 _("Failed to set player to initial ready state - fatal"));
     goto fail;
