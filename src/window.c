@@ -914,17 +914,6 @@ cb_found_tag (GstElement       *play,
   g_idle_add ((GSourceFunc) idle_found_tag, tf);
 }
 
-static gboolean
-idle_eos (gpointer data)
-{
-  GstPlayerWindow *win = GST_PLAYER_WINDOW (data);
-
-  gst_element_set_state (win->play, GST_STATE_READY);
-
-  /* once */
-  return FALSE;
-}
-
 static void
 cb_eos (GstElement *play,
 	gpointer    data)
@@ -936,5 +925,5 @@ cb_eos (GstElement *play,
     win->idle_id = 0;
   }
 
-  g_idle_add ((GSourceFunc) idle_eos, data);
+  gst_element_set_state (win->play, GST_STATE_READY);
 }
