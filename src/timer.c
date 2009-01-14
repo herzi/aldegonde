@@ -314,39 +314,6 @@ cb_button_release (GtkWidget      *widget,
   return FALSE;
 }
 
-typedef struct _GstPlayerTimerStateChange {
-  GstElement *play;
-  GstState old_state, new_state;
-  GstPlayerTimer *timer;
-} GstPlayerTimerStateChange;
-
-static gboolean
-idle_state (gpointer data)
-{
-  GstPlayerTimerStateChange *st = data;
-
-  if (st->old_state <= GST_STATE_READY &&
-      st->new_state >= GST_STATE_PAUSED) {
-    gtk_widget_set_sensitive (GTK_WIDGET (st->timer), TRUE);
-  } else if (st->old_state >= GST_STATE_PAUSED &&
-             st->new_state <= GST_STATE_READY) {
-    gtk_widget_set_sensitive (GTK_WIDGET (st->timer), FALSE);
-    gtk_widget_set_sensitive (GTK_WIDGET (st->timer->range), FALSE);
-    gtk_label_set_text (st->timer->label, "0:00");
-    gtk_range_set_adjustment (st->timer->range, NULL);
-    st->timer->len = GST_CLOCK_TIME_NONE;
-    st->timer->pos = GST_CLOCK_TIME_NONE;
-  }
-
-  if (st->play)
-    gst_object_unref (GST_OBJECT (st->play));
-  g_object_unref (G_OBJECT (st->timer));
-  g_free (st);
-
-  /* once */
-  return FALSE;
-}
-
 static void
 cb_state (GstElement*play,
 	  GstState   old_state,
@@ -354,20 +321,19 @@ cb_state (GstElement*play,
 	  gpointer   data)
 {
   GstPlayerTimer *timer = GST_PLAYER_TIMER (data);
-  GstPlayerTimerStateChange *st = g_new (GstPlayerTimerStateChange, 1);
 
-  st->play = play;
-  if (st->play)
-    gst_object_ref (GST_OBJECT (play));
-  st->old_state = old_state;
-  st->new_state = new_state;
-  st->timer = timer;
-  g_object_ref (G_OBJECT (timer));
-
-  if (play)
-    g_idle_add ((GSourceFunc) idle_state, st);
-  else
-    idle_state (st);
+  if (old_state <= GST_STATE_READY &&
+      new_state >= GST_STATE_PAUSED) {
+    gtk_widget_set_sensitive (GTK_WIDGET (timer), TRUE);
+  } else if (old_state >= GST_STATE_PAUSED &&
+             new_state <= GST_STATE_READY) {
+    gtk_widget_set_sensitive (GTK_WIDGET (timer), FALSE);
+    gtk_widget_set_sensitive (GTK_WIDGET (timer->range), FALSE);
+    gtk_label_set_text (timer->label, "0:00");
+    gtk_range_set_adjustment (timer->range, NULL);
+    timer->len = GST_CLOCK_TIME_NONE;
+    timer->pos = GST_CLOCK_TIME_NONE;
+  }
 }
 
 static void
