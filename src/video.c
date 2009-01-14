@@ -553,7 +553,7 @@ cb_state_change (GstElement*element,
     video->height = gdk_pixbuf_get_height (logo);
 
     g_object_ref (G_OBJECT (video));
-    g_idle_add (idle_desired_size, video);
+    idle_desired_size (video);
 
     g_object_unref (logo);
   } else if ((new_state >= GST_STATE_PAUSED &&
