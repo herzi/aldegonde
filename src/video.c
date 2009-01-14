@@ -122,6 +122,32 @@ gst_player_video_init (GstPlayerVideo *video)
       G_CALLBACK (cb_preferred_video_size), NULL);
 }
 
+static void
+cb_message (GstBus    *bus,
+            GstMessage*message,
+            gpointer   user_data)
+{
+  switch (message->type) {
+    case GST_MESSAGE_STATE_CHANGED:
+      {
+        GstState old_state, new_state;
+
+        gst_message_parse_state_changed (message,
+                                         &old_state,
+                                         &new_state,
+                                         NULL);
+
+        cb_state_change (GST_PLAYER_VIDEO (user_data)->play,
+                         old_state,
+                         new_state,
+                         user_data);
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 GtkWidget *
 gst_player_video_new (GstElement *element,
 		      GstElement *play)
@@ -140,8 +166,8 @@ gst_player_video_new (GstElement *element,
 
     gst_object_ref (GST_OBJECT (video->element));
     gst_object_ref (GST_OBJECT (video->play));
-    video->id = g_signal_connect (play, "state-change",
-        G_CALLBACK (cb_state_change), video);
+    video->id = g_signal_connect (gst_pipeline_get_bus (GST_PIPELINE (play)), "message",
+        G_CALLBACK (cb_message), video);
   }
   
   return GTK_WIDGET (video);
@@ -153,7 +179,7 @@ gst_player_video_dispose (GObject *object)
   GstPlayerVideo *video = GST_PLAYER_VIDEO (object);
 
   if (video->id != 0) {
-    g_signal_handler_disconnect (video->play, video->id);
+    g_signal_handler_disconnect (gst_pipeline_get_bus (GST_PIPELINE (video->play)), video->id);
     video->id = 0;
   }
 
