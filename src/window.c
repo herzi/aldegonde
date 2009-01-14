@@ -254,6 +254,25 @@ cb_message (GstBus    *bus,
       cb_eos (GST_PLAYER_WINDOW (user_data)->play,
               user_data);
       break;
+    case GST_MESSAGE_ERROR:
+      {
+        GError* error = NULL;
+        gchar * debug = NULL;
+
+        gst_message_parse_error (message,
+                                 &error,
+                                 &debug);
+
+        cb_error (GST_PLAYER_WINDOW (user_data)->play,
+                  GST_ELEMENT (message->src),
+                  error,
+                  debug,
+                  user_data);
+
+        g_error_free (error);
+        g_free (debug);
+      }
+      break;
     default:
       break;
   }
@@ -306,7 +325,6 @@ gst_player_window_new (GError **err)
   bus = gst_pipeline_get_bus (GST_PIPELINE (play));
   gst_bus_add_signal_watch (bus);
   g_signal_connect (bus, "message", G_CALLBACK (cb_message), win);
-  g_signal_connect (play, "error", G_CALLBACK (cb_error), win);
   g_signal_connect (play, "state-change", G_CALLBACK (cb_state), win);
   g_signal_connect (play, "found-tag", G_CALLBACK (cb_found_tag), win);
 
