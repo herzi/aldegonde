@@ -79,6 +79,8 @@ main (gint   argc,
   GtkWidget *win;
   GOptionContext* options;
 
+  g_thread_init (NULL);
+
   options = g_option_context_new ("");
   /* init gstreamer */
   g_option_context_add_group(options, gst_init_get_option_group ());
