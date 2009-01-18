@@ -161,7 +161,7 @@ static GnomeUIInfo open_menu[] = {
 };
 
 static GnomeUIInfo file_menu[] = {
-  GNOMEUIINFO_SUBTREE (_("Open"), open_menu),
+  GNOMEUIINFO_SUBTREE (N_("Open"), open_menu),
   GNOMEUIINFO_SEPARATOR,
   GNOMEUIINFO_ITEM_QUICKKEY (N_("Propertie_s"), N_("Stream properties"),
 			     cb_properties, GTK_STOCK_PROPERTIES,
