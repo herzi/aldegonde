@@ -21,7 +21,7 @@ AC_ARG_WITH(pkg-config-path,
    [export PKG_CONFIG_PATH=${withval}])
 
 dnl Check for glib2
-PKG_CHECK_MODULES(GLIB2, glib-2.0 gobject-2.0 gthread-2.0 gmodule-2.0, ,
+PKG_CHECK_MODULES(GLIB2, glib-2.0 gobject-2.0 gthread-2.0 gmodule-2.0 gio-2.0, ,
   AC_MSG_ERROR(You don't have glib-2.0 (1.3) installed))
 GLIB_LIBS=$GLIB2_LIBS
 GLIB_CFLAGS=$GLIB2_CFLAGS

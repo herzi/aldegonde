@@ -74,14 +74,20 @@ gint
 main (gint   argc,
       gchar *argv[])
 {
-  GError *err = NULL;
-  gchar *appfile;
-  GtkWidget *win;
+  GError        * err = NULL;
+  gchar         * appfile;
   GOptionContext* options;
+  gchar         **files = NULL;
+  GOptionEntry    entries[] = {
+    {G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &files, NULL, NULL},
+    {NULL}
+  };
+  GtkWidget     * win;
 
   g_thread_init (NULL);
 
-  options = g_option_context_new ("");
+  options = g_option_context_new ("[FILES]");
+  g_option_context_add_main_entries (options, entries, NULL);
   /* init gstreamer */
   g_option_context_add_group(options, gst_init_get_option_group ());
 
@@ -113,6 +119,21 @@ main (gint   argc,
     gtk_widget_destroy (win);
     return -1;
   }
+
+  if (files)
+    {
+      GFile* file = g_file_new_for_commandline_arg (files[0]);
+      gchar* uri  = g_file_get_uri (file);
+      gst_player_window_play (GST_PLAYER_WINDOW (win), uri);
+      g_free (uri);
+      g_object_unref (file);
+
+      if (files[1])
+        g_warning ("%s: cannot handle multiple files to be opened, please only specify one",
+                   g_get_application_name ());
+
+      g_strfreev (files);
+    }
 
   g_signal_connect (win, "destroy", G_CALLBACK (cb_destroy), NULL);
   gtk_widget_show (win);
