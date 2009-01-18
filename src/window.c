@@ -450,6 +450,17 @@ cb_play (gpointer data)
   return FALSE;
 }
 
+void
+gst_player_window_play (GstPlayerWindow* self,
+                        gchar const    * uri)
+{
+  g_return_if_fail (GST_PLAYER_IS_WINDOW (self));
+  g_return_if_fail (uri && *uri);
+
+  g_object_set (G_OBJECT (self->play), "uri", uri, NULL);
+  g_idle_add (cb_play, self);
+}
+
 static void
 cb_open_file (GtkWidget *widget,
 	      gpointer   data)
@@ -475,8 +486,7 @@ cb_open_file (GtkWidget *widget,
       str = g_strdup (location);
     gtk_widget_destroy (filesel);
 
-    g_object_set (G_OBJECT (win->play), "uri", str, NULL);
-    g_idle_add (cb_play, win);
+    gst_player_window_play (win, str);
     g_free (str);
   } else {
     gtk_widget_destroy (filesel);

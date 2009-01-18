@@ -64,6 +64,9 @@ typedef struct _GstPlayerWindowClass {
 GType		gst_player_window_get_type	(void);
 GtkWidget *	gst_player_window_new		(GError **err);
 
+void            gst_player_window_play          (GstPlayerWindow* self,
+                                                 gchar const    * uri);
+
 G_END_DECLS
 
 #endif /* __WINDOW_H__ */
