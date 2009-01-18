@@ -46,7 +46,6 @@ static void	gst_player_video_size_allocate	(GtkWidget      *widget,
 						 GtkAllocation  *alloc);
 static gboolean	gst_player_video_expose		(GtkWidget      *widget,
 						 GdkEventExpose *event);
-static void	gst_player_video_draw		(GstPlayerVideo *video);
 
 static void	cb_state_change			(GstElement     *element,
 						 GstState        old_state,
@@ -356,20 +355,29 @@ gst_player_video_size_allocate (GtkWidget     *widget,
   }
 }
 
-static void
-gst_player_video_draw (GstPlayerVideo *video)
+static gboolean
+gst_player_video_expose (GtkWidget      *widget,
+                         GdkEventExpose *event)
 {
-  GstXOverlay *overlay;
-  GtkWidget *widget = GTK_WIDGET (video);
+  GstPlayerVideo* video;
 
-  if (!GST_IS_X_OVERLAY (video->element))
-    return;
-  overlay = GST_X_OVERLAY (video->element);
+  if (event->count > 0)
+    return TRUE;
+
+  g_return_val_if_fail (widget != NULL, FALSE);
+  g_return_val_if_fail (GST_PLAYER_IS_VIDEO (widget), FALSE);
+  g_return_val_if_fail (event != NULL, FALSE);
+
+  video = GST_PLAYER_VIDEO (widget);
+
 
   gdk_draw_rectangle (video->full_window, widget->style->black_gc,
       TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
   if (GST_STATE (video->element) >= GST_STATE_PAUSED) {
-    gst_x_overlay_expose (overlay);
+    if (!GST_IS_X_OVERLAY (video->element))
+      return TRUE;
+
+    gst_x_overlay_expose (GST_X_OVERLAY (video->element));
   } else {
     GstPlayerVideoClass *klass = GST_PLAYER_VIDEO_GET_CLASS (video);
     GdkPixbuf *logo;
@@ -385,6 +393,10 @@ gst_player_video_draw (GstPlayerVideo *video)
     width *= ratio;
     height *= ratio;
 
+    gdk_draw_rectangle (video->video_window, widget->style->black_gc,
+        TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
+
+    /* FIXME: it's totally uncool to do this on every expose... */
     logo = gdk_pixbuf_scale_simple (klass->logo,
         width, height, GDK_INTERP_BILINEAR);
 
@@ -394,26 +406,8 @@ gst_player_video_draw (GstPlayerVideo *video)
 
     gdk_pixbuf_unref (logo);
   }
-}
 
-static gboolean
-gst_player_video_expose (GtkWidget      *widget,
-			 GdkEventExpose *event)
-{
-  GstPlayerVideo *video;
-
-  g_return_val_if_fail (widget != NULL, FALSE);
-  g_return_val_if_fail (GST_PLAYER_IS_VIDEO (widget), FALSE);
-  g_return_val_if_fail (event != NULL, FALSE);
-
-  if (event->count > 0)
-    return TRUE;
-
-  video = GST_PLAYER_VIDEO (widget);
- 
-  gst_player_video_draw (video);
-
-  return TRUE;
+  return FALSE;
 }
 
 /*
