@@ -231,6 +231,8 @@ gst_player_video_realize (GtkWidget *widget)
 				       &attributes, attributes_mask);
   gdk_window_show (video->full_window);
 
+  gdk_window_set_user_data (video->full_window, widget);
+
   /* specific for video only */
   attributes.x = 0;
   attributes.y = 0;
@@ -370,9 +372,16 @@ gst_player_video_expose (GtkWidget      *widget,
 
   video = GST_PLAYER_VIDEO (widget);
 
+  if (event->window == video->full_window)
+    {
+      gdk_draw_rectangle (video->full_window, widget->style->black_gc,
+          TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
 
-  gdk_draw_rectangle (video->full_window, widget->style->black_gc,
-      TRUE, 0, 0, widget->allocation.width, widget->allocation.height);
+      return FALSE;
+    }
+
+  g_return_val_if_fail (event->window == video->video_window, FALSE);
+
   if (GST_STATE (video->element) >= GST_STATE_PAUSED) {
     if (!GST_IS_X_OVERLAY (video->element))
       return TRUE;
@@ -406,6 +415,10 @@ gst_player_video_expose (GtkWidget      *widget,
 
     gdk_pixbuf_unref (logo);
   }
+
+  gdk_window_invalidate_rect (video->full_window,
+                              &widget->allocation,
+                              FALSE);
 
   return FALSE;
 }
