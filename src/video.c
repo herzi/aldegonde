@@ -82,6 +82,17 @@ gst_player_video_get_type (void)
   return gst_player_video_type;
 }
 
+static gboolean
+gst_player_video_configure_event (GtkWidget        * widget,
+                                  GdkEventConfigure* event)
+{
+  GdkRectangle rect = {0,0, widget->allocation.width, widget->allocation.height};
+  gdk_window_invalidate_rect (GST_PLAYER_VIDEO (widget)->full_window,
+                              &rect, TRUE);
+
+  return FALSE;
+}
+
 static void
 gst_player_video_class_init (GstPlayerVideoClass *klass)
 {
@@ -272,11 +283,18 @@ gst_player_video_realize (GtkWidget *widget)
   gtk_style_set_background (widget->style, widget->window, GTK_STATE_ACTIVE);
 
   gst_x_overlay_set_xwindow_id (GST_X_OVERLAY (video->element), GDK_WINDOW_XWINDOW (video->video_window));
+
+  g_signal_connect_swapped (gtk_widget_get_toplevel (widget), "configure-event",
+                            G_CALLBACK (gst_player_video_configure_event), widget);
 }
 
 static void
 gst_player_video_unrealize (GtkWidget* widget)
 {
+  g_signal_handlers_disconnect_by_func (gtk_widget_get_toplevel (widget),
+                                        gst_player_video_configure_event,
+                                        widget);
+
   gst_x_overlay_set_xwindow_id (GST_X_OVERLAY (GST_PLAYER_VIDEO (widget)->element), 0);
 
   GTK_WIDGET_CLASS (parent_class)->unrealize (widget);
